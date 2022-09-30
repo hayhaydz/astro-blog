@@ -4,10 +4,50 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import { SITE_TITLE, SITE_DESCRIPTION } from '../config';
 
-// Use Astro.glob() to fetch all posts, and then sort them by date.
-const posts = (await Astro.glob('./blog/*.{md,mdx}')).sort(
-	(a, b) => new Date(b.frontmatter.pubDate).valueOf() - new Date(a.frontmatter.pubDate).valueOf()
-);
+const graphqlQuery = {
+	query: `
+		query {
+			posts {
+				data {
+					attributes {
+						title,
+						excerpt,
+						slug,
+						createdAt,
+						coverImage {
+							data {
+								attributes {
+									formats
+								}
+							}
+						},
+						author {
+							data {
+								attributes {
+									name,
+									picture {
+										data {
+											attributes {
+												formats
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	`
+}
+const response = await fetch(`${import.meta.env.PUBLIC_API_URL}/graphql`, {
+	method: 'POST',
+	headers: {'Content-Type':'application/json'},
+	body: JSON.stringify(graphqlQuery)
+});
+const json = await response.json();
+const posts = json.data.posts.data;
 ---
 
 <!DOCTYPE html>
@@ -39,14 +79,14 @@ const posts = (await Astro.glob('./blog/*.{md,mdx}')).sort(
 				<ul>
 					{posts.map((post) => (
 						<li>
-							<time datetime={post.frontmatter.pubDate}>
-								{new Date(post.frontmatter.pubDate).toLocaleDateString('en-us', {
+							<time datetime={post.attributes.createdAt}>
+								{new Date(post.attributes.createdAt).toLocaleDateString('en-us', {
 									year: 'numeric',
 									month: 'short',
 									day: 'numeric',
 								})}
 							</time>
-							<a href={post.url}>{post.frontmatter.title}</a>
+							<a href={`/blog/${post.attributes.slug}`}>{post.attributes.title}</a>
 						</li>
 					))}
 				</ul>
